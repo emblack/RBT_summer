@@ -40,19 +40,8 @@ module RBTspecs where
         RC-Black :  {n : Nat } {l : RBT n } {kv : Key × Value} {r : RBT n}
                  → RootColored (BlackNode l kv r) Black
 
-    data AlmostWellRedTree :   Nat  ->  Set where 
-         Empty      : AlmostWellRedTree 1
-         RedNode    :  ∀ {n}
-                     → (l : RBT n ) 
-                     → (kv : Key × Value)
-                     → (r : RBT n )
-                     → AlmostWellRedTree n
-         BlackNode  :  ∀ {n}
-                      → (l : RBT n ) 
-                      → (kv : Key × Value)
-                      → (r : RBT n )
-                      → AlmostWellRedTree (S n)
-
+{-An almost well red tree, or an ARBT, is either a tree with a red root and at most one red child, or a regular RBT. 
+We call an ARBT with a possible violation in the left child a LeftARBT and an ARBT with a possible violation in the right child a RightARBT.-}
     data LeftARBT : Nat -> Set where
                Empty     : LeftARBT 1
                RedNode   :  ∀ {n}
@@ -80,7 +69,9 @@ module RBTspecs where
                          → (kv : Key × Value)
                          → (r : RBT n)
                          → RightARBT (S n)
-
+{-A BBRBT is a tree with a red, black or double black root that has RBTs as children. 
+If the root is red, there can be no red-red violations.
+Essentially, a BBRBT is an RBT that may have a double black root.-}
     data BBRBT : Nat -> Set where
       Empty     : BBRBT 1
       RedNode   :  ∀ {n}
@@ -111,7 +102,8 @@ module RBTspecs where
         RC-DoubleBlack :  {n : Nat } {l : RBT n } {kv : Key × Value} {r : RBT n}
                  → RootColoredBBRBT (DBlackNode l kv r) DoubleBlack
 
-                      
+{-A BBARBT is a tree with a red, black, or double black root, with a the right child a LeftARBT OR the left child a RightARBT.
+If the root is red, there cannot be any red-red violations and so the tree has to be a regular RBT. -}                      
     data BBARBT : Nat -> Set where   
              Empty         : BBARBT 1
        {-a BBARBT Can have its left child a right ARBT-}
@@ -146,13 +138,8 @@ module RBTspecs where
                            → BBARBT n 
                           
              
-
+{-An RBT fits the definition of every tree we've defined-}
  
-    promote : {n : Nat} →  RBT n -> AlmostWellRedTree n
-    promote Empty  = Empty 
-    promote (RedNode l kv r _ _) = RedNode l kv r
-    promote (BlackNode l kv r)   = BlackNode l kv r
-
     promote2 : {n : Nat} → RBT n -> LeftARBT n
     promote2 Empty =  Empty
     promote2 (RedNode l kv r _ rr) = RedNode l kv r rr
@@ -177,15 +164,21 @@ module RBTspecs where
 {-confused here-- in meetings, I remembe saying that we included the RBT def in each of the other tree definitions so that the "normal" case of when the tree is actually an RBT is folded into the function. But here, I have to make a different one at least for the BB case because we're trying to prove something different if the input is an RBT. Is this a problem? 
 However, we don't have to prove anything different for balanceBNeither, so do I need that function?-}
 
+    {-balance takes a tree with a black or double black root. If the root is double black, there are three input/output possiblities:
+    1. left child can be a RightARBT, with the right child an RBT. Then balance returns an RBT with a black root
+    2. right child can be a LeftARBT, with the left child an RBT. Then balance returns an RBT with a black root.
+    3. Both children are RBTs, then balance returns an BBRBT with a double black root-}
+
     balanceBBLeft : {n : Nat} → RightARBT n → (Key × Value) → RBT n → Σ \ (t : RBT (S(S n))) → RootColored t Black
     balanceBBLeft = {!!}
 
     balanceBBRight :  {n : Nat} → RBT n → (Key × Value) → LeftARBT n → Σ \ (t : RBT (S(S n))) → RootColored t Black
     balanceBBRight = {!!}
 
-    balanceBBNeither :  {n : Nat} → RBT n → (Key × Value) → RBT n → Σ \ (t : RBT (S(S n))) → RootColored t DoubleBlack {-is this a problem?-}
+    balanceBBNeither :  {n : Nat} → RBT n → (Key × Value) → RBT n → Σ \ (t : BBRBT (S(S n))) → RootColoredBBRBT t DoubleBlack {-is this a problem?-}
     balanceBBNeither = {!!}
 
+    {-If balance takes a B root, then there are the same three cases as above, except in each case, balance simply returns an RBT.-}
     balanceBLeft : {n : Nat} → RightARBT n → (Key × Value) → RBT n → RBT (S n)
     balanceBLeft = {!!}
 
@@ -194,6 +187,9 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
 
     balanceBNeither :  {n : Nat} → RBT n → (Key × Value) → RBT n → RBT (S n) {-is this necessary?-}
     balanceBNeither = {!!}
+
+    {-Rotate can either take a tree with a red root or a black root. If the root is black, at most one of the left or right child
+    is a BBRBT, with the other child an RBT. Then, balance returns a BBRBT with a black or double black root.-}
 
     rotateBLeft : {n : Nat} → BBRBT n → (Key × Value) → RBT n →
                   Σ \ (t : BBRBT (S n)) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
@@ -205,6 +201,8 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
 
     {-do I need the case where neither is a BBRBT? I think not, so I'm going to skip.-}
 
+    {-If rotate takes a tree with a red root, there are the same cases except there is the added restriction that there can be no red-red violations
+    from the root. Then, rotate returns a BBRBT.-}
     rotateRLeft : {n : Nat} → (l : BBRBT n) → Either (RootColoredBBRBT l Black) (RootColoredBBRBT l DoubleBlack)
                   → (Key × Value)
                   → (r : RBT n) → (RootColored r Black)
@@ -217,6 +215,10 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   → BBRBT n
     rotateRRight = {!!}
 
+    {-mindel takes an RBT and deletes the minimum element. It returns a BBRBT and the element deleted.
+    If the root color is B, then mindel returns the element deleted and a BBRBT with a B or BB root. 
+    If the root color of the input is R, it simply returns the element deleted and a BBRBT.-}
+
     mindelB : {n : Nat} → (s : RBT n) → RootColored s Black →
                        ((Key × Value) × Σ \ (t : BBRBT n) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack)))
     mindelB = {!!}
@@ -224,15 +226,20 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     mindelR : {n : Nat} → (s : RBT n) → RootColored s Red → ((Key × Value) × BBRBT n)
     mindelR = {!!}
 
+    {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.-}
     blackenroot : {n : Nat} → BBRBT n → RBT n
     blackenroot = {!!}
 
+    {-del takes an RBT and an element to delete. 
+    1. If the root color is B, then del returns a BBRBT with a black or double black root
+    2. If the root color is R, then del returns a BBRBT-}
     delB : {n : Nat} → RBT n →  Σ \ (t : BBRBT n) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
     delB = {!!}
 
     delR : {n : Nat} → RBT n → BBRBT n
     delR = {!!}
 
+    {-Delete takes an RBT and an element to delete and returns an RBT. -}
     delete : {n : Nat} → (t : RBT n) → RBT n
     delete = {!!} {-if rootcolor t is black, send to one func, otherwise send to other -}
   {-  delete RedNode (Node l kv r cl cr) = blackenroot ?
