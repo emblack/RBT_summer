@@ -170,7 +170,9 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     3. Both children are RBTs, then balance returns an BBRBT with a double black root-}
 
     balanceBBLeft : {n : Nat} → RightARBT n → (Key × Value) → RBT n → Σ \ (t : RBT (S(S n))) → RootColored t Black
-    balanceBBLeft = {!!}
+    balanceBBLeft Empty kv rbt = {!!}
+    balanceBBLeft (RedNode l kv r cl) (k , v) rbt  = {!!}
+    balanceBBLeft (BlackNode l kv r) (k , v) rbt = {!!}
 
     balanceBBRight :  {n : Nat} → RBT n → (Key × Value) → LeftARBT n → Σ \ (t : RBT (S(S n))) → RootColored t Black
     balanceBBRight = {!!}
@@ -180,13 +182,23 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
 
     {-If balance takes a B root, then there are the same three cases as above, except in each case, balance simply returns an RBT.-}
     balanceBLeft : {n : Nat} → RightARBT n → (Key × Value) → RBT n → RBT (S n)
-    balanceBLeft = {!!}
+    {-this is the only relevant, violation case-}
+    balanceBLeft (RedNode a kvx (RedNode b kvy c cl2 rr2) cl) kvz d = RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black
+    {-the rest of these cases, the tree is actually already an RBT, and there is no violation, but we need them for completeness-}
+    balanceBLeft Empty kv d = BlackNode Empty kv d
+    balanceBLeft (BlackNode a kvx b) kvz d = BlackNode (BlackNode a kvx b) kvz d 
+    balanceBLeft (RedNode a kvx Empty cl) kvz d = BlackNode (RedNode a kvx Empty cl RC-Empty) kvz d
+    balanceBLeft (RedNode a kvx (BlackNode b kvy c) cl) kvz d = BlackNode (RedNode a kvx (BlackNode b kvy c) cl RC-Black) kvz d
 
     balanceBRight :  {n : Nat} → RBT n → (Key × Value) → LeftARBT n → RBT (S n)
-    balanceBRight = {!!}
+    balanceBRight a kvx (RedNode (RedNode b kvy c cl rr) kvz d cr) = RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black
+    balanceBRight a kvx Empty = BlackNode a kvx Empty
+    balanceBRight a kvx (RedNode Empty kvz d cr) = BlackNode a kvx (RedNode Empty kvz d RC-Empty cr)
+    balanceBRight a kvx (RedNode (BlackNode b kvy c) kvz d cr) = BlackNode a kvx (RedNode (BlackNode b kvy c) kvz d RC-Black cr)
+    balanceBRight a kvx (BlackNode c kvz d) = BlackNode a kvx (BlackNode c kvz d)
 
-    balanceBNeither :  {n : Nat} → RBT n → (Key × Value) → RBT n → RBT (S n) {-is this necessary?-}
-    balanceBNeither = {!!}
+    {-i decided balanceBNeither was unecessary because the case where the input is just an RBT is included in the above functions-}
+
 
     {-Rotate can either take a tree with a red root or a black root. If the root is black, at most one of the left or right child
     is a BBRBT, with the other child an RBT. Then, balance returns a BBRBT with a black or double black root.-}
