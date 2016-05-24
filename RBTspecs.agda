@@ -74,6 +74,7 @@ If the root is red, there can be no red-red violations.
 Essentially, a BBRBT is an RBT that may have a double black root.-}
     data BBRBT : Nat -> Set where
       Empty     : BBRBT 1
+      DBEmpty   : BBRBT 2
       RedNode   :  ∀ {n}
                       → (l : RBT n)
                       → (kv : Key × Value)
@@ -94,6 +95,7 @@ Essentially, a BBRBT is an RBT that may have a double black root.-}
 
     data RootColoredBBRBT : {n : Nat } -> BBRBT n -> Color -> Set where 
         RC-Empty : RootColoredBBRBT Empty Black
+        RC-DBEmpty : RootColoredBBRBT DBEmpty DoubleBlack
         RC-Red   :  {n : Nat } {l : RBT n } {kv : Key × Value} {r : RBT n }
                    {cl : RootColored l Black} {cr : RootColored r Black}
                  → RootColoredBBRBT (RedNode l kv r cl cr) Red
@@ -219,7 +221,17 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   → (Key × Value)
                   → (r : RBT n) → (RootColored r Black)
                   → BBRBT n
-    rotateRLeft = {!!}
+    rotateRLeft (DBlackNode a kvx b) RCBBRBT-DoubleBlack kvy (BlackNode c kvz d) RC-Black  =
+                                                         promote4 (balanceBLeft (RedNode (BlackNode a kvx b) kvy c RC-Black) kvz d)
+    rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = {!!}
+    rotateRLeft Empty RCBBRBT-Empty kvy Empty RC-Empty = {!!} 
+    rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz d) (RC-Black) = {!!} 
+    rotateRLeft (RedNode  a kvx b cl rr) Void  kvy (BlackNode c kvz d) (RC-Black) = {!!} 
+    rotateRLeft (BlackNode a kvx b) RCBBRBT-Black kvy (BlackNode c kvz d) (RC-Black) = {!!}
+    {-agda says that I need these cases for completeness but they can't work because a node and an empty tree
+    will never have the same black height so this case won't work! What do I do?-}
+    rotateRLeft {._} (RedNode {._} _ _ _ _ _) _ _ ._ RC-Empty = {!!} 
+    rotateRLeft {._} (BlackNode {._} _ _ _) _ _ ._ RC-Empty = {!!} 
 
     rotateRRight : {n : Nat} → (l : RBT n) → (RootColored l Black)
                   → (Key × Value)
