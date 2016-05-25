@@ -221,23 +221,38 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   → (Key × Value)
                   → (r : RBT n) → (RootColored r Black)
                   → BBRBT n
+    {-the first two are the only really relevant cases-}
     rotateRLeft (DBlackNode a kvx b) RCBBRBT-DoubleBlack kvy (BlackNode c kvz d) RC-Black  =
                                                          promote4 (balanceBLeft (RedNode (BlackNode a kvx b) kvy c RC-Black) kvz d)
-    rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = {!!}
-    rotateRLeft Empty RCBBRBT-Empty kvy Empty RC-Empty = {!!} 
-    rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz d) (RC-Black) = {!!} 
+    rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = promote4 (balanceBLeft (RedNode Empty kvy c RC-Empty) kvz d)
+    rotateRLeft Empty RCBBRBT-Empty kvy Empty RC-Empty = RedNode Empty kvy Empty RC-Empty RC-Empty
+    rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz d) (RC-Black) = RedNode Empty kvy (BlackNode c kvz d) RC-Empty RC-Black
+    {-this can't work because we have a rednode where there needs to be a black one but agda says I need this case--what to do?-}
     rotateRLeft (RedNode  a kvx b cl rr) Void  kvy (BlackNode c kvz d) (RC-Black) = {!!} 
-    rotateRLeft (BlackNode a kvx b) RCBBRBT-Black kvy (BlackNode c kvz d) (RC-Black) = {!!}
+    rotateRLeft (BlackNode a kvx b) RCBBRBT-Black kvy (BlackNode c kvz d) (RC-Black) = RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black
     {-agda says that I need these cases for completeness but they can't work because a node and an empty tree
     will never have the same black height so this case won't work! What do I do?-}
     rotateRLeft {._} (RedNode {._} _ _ _ _ _) _ _ ._ RC-Empty = {!!} 
-    rotateRLeft {._} (BlackNode {._} _ _ _) _ _ ._ RC-Empty = {!!} 
+    rotateRLeft {._} (BlackNode {._} _ _ _) _ _ ._ RC-Empty = {!!}
+    
 
     rotateRRight : {n : Nat} → (l : RBT n) → (RootColored l Black)
                   → (Key × Value)
                   → (r : BBRBT n) → Either (RootColoredBBRBT r Black) (RootColoredBBRBT r DoubleBlack)
                   → BBRBT n
-    rotateRRight = {!!}
+    {-first two are the only relevant cases-}
+    rotateRRight (BlackNode a kvx b) RC-Black kvy (DBlackNode c kvz d) RCBBRBT-DoubleBlack =
+                                                              promote4 (balanceBRight a kvx (RedNode b kvy (BlackNode c kvz d) RC-Black))
+    rotateRRight (BlackNode a kvx b) RC-Black kvy DBEmpty RCBBRBT-DBEmpty = promote4 (balanceBRight a kvx (RedNode b kvy Empty RC-Empty))
+    rotateRRight Empty RC-Empty kvy Empty RCBBRBT-Empty = promote4 (RedNode Empty kvy Empty RC-Empty RC-Empty)
+    rotateRRight (BlackNode a kvx b) RC-Black kvy (BlackNode c kvz d) RCBBRBT-Black = promote4 (RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black)
+    {-These cases can't work because we're going to have a red-red violation..what to do? Agda says I need this case-}
+    rotateRRight (BlackNode a kvx b) RC-Black kvy (RedNode c kvz d cl rr) Void = {!!}
+    rotateRRight  Empty RC-Empty kvy (RedNode  c kvz d cl rr) Void = {!!}
+    {-Agda says I need these cases but they won't work because an empty and a black node can't have the same height...what to do?-}
+    rotateRRight  Empty RC-Empty kvy (BlackNode  c kvz d) RCBBRBT-Black = {!!}
+    rotateRRight   (BlackNode a kvx b) (RC-Black) kvy Empty RCBBRBT-Empty = {!!}
+    
 
     {-mindel takes an RBT and deletes the minimum element. It returns a BBRBT and the element deleted.
     If the root color is B, then mindel returns the element deleted and a BBRBT with a B or BB root. 
