@@ -185,6 +185,7 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     what to do here?-}
     balanceBBLeft Empty kvx d = (DBlackNode Empty kvx d) , (Inr RC-DoubleBlack)  
 
+
     balanceBBRight :  {n : Nat} → RBT n → (Key × Value) → LeftARBT n →
                                 Σ \ (t : BBRBT (S(S n))) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
     balanceBBRight a kvx (RedNode (RedNode b kvy c bblack cblack) kvz d dblack) = (BlackNode (BlackNode a kvx b) kvy (BlackNode c kvz d)) , (Inl RC-Black)
@@ -357,23 +358,70 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
       
       
 
-    {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.-}
+    {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.
+    problem: since blackheight is intrinsic, how do I do this???? it should be allowed to decrement by one.-}
     blackenroot : {n : Nat} → BBRBT n → RBT n
-    blackenroot = {!!}
+    blackenroot Empty = Empty
+    blackenroot DBEmpty = {!Empty!}
+    blackenroot (RedNode l kv r cl rr) = RedNode l kv r cl rr
+    blackenroot (BlackNode l kv r) = BlackNode l kv r
+    blackenroot (DBlackNode l kv r) = {!(BlackNode l kv r)!}
 
     {-del takes an RBT and an element to delete. 
     1. If the root color is B, then del returns a BBRBT with a black or double black root
     2. If the root color is R, then del returns a BBRBT-}
-    delB : {n : Nat} → RBT n →  Σ \ (t : BBRBT n) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
-    delB = {!!}
+    {-do I need the rootcolored t black stuff?-}  {-confused--before agda always complained about not enough cases. 
+    now I don't include any red cases, so why isn't agda mad? -}
+    mutual
+      delB : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Black) → Σ \ (t : BBRBT n)
+                                          → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
+      delB (k' , v') Empty RC-Empty = Empty , (Inl RC-Empty)
+      delB (k' , v') (BlackNode Empty (k , v) Empty) RC-Black with compare k' k
+      ...| Less = (BlackNode Empty (k , v) Empty) , (Inl RC-Black)
+      ...| Greater = (BlackNode Empty (k , v) Empty) , (Inl RC-Black)
+      ...| Equal = DBEmpty , (Inr RC-DBEmpty)
+      delB (k' , v') (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty) (ky , vy) Empty) RC-Black  with compare k' ky
+      ...| Greater = (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty)
+                        (ky , vy) Empty) , (Inl RC-Black)
+      ...| Equal = (BlackNode Empty (ky , vy) Empty) , Inl RC-Black
+      ...| Less with compare k' kx
+      ...| Equal = (BlackNode Empty (ky , vy) Empty) , (Inl RC-Black)
+      ...| _ = (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty)
+                  (ky , vy) Empty) , (Inl RC-Black) 
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black with compare k' ky
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = {!!}
+        {-I want to case on the color of the subtrees!-}
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = {!!}
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Equal = {!!}
 
-    delR : {n : Nat} → RBT n → BBRBT n
-    delR = {!!}
+    {-  delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (RedNode c (kz , vz) d cblack dblack)) RC-Black
+                                with compare k' ky
+      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Less  = {!!}
+      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Greater = {!!}
+      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Equal = {!!}
+      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (BlackNode c (kz , vz) d)) RC-Black = ?
+      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
+                                (ky , vy)
+                                (RedNode c (kz , vz) d cblack dblack)) RC-Black -}
+                                
+      delR : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Red) → BBRBT n
+      delR = {!!}
 
     {-Delete takes an RBT and an element to delete and returns an RBT. -}
-    delete : {n : Nat} → (t : RBT n) → RBT n
-    delete = {!!} {-if rootcolor t is black, send to one func, otherwise send to other -}
-  {-  delete RedNode (Node l kv r cl cr) = blackenroot ?
-    delete BlackNode = ? why doesn't thi work?-}
+    delete : {n : Nat} → (Key × Value) → (t : RBT n) → RBT n
+    delete (k' , v') Empty = Empty
+    delete (k' , v') (RedNode a (k , v) b ablack bblack) = blackenroot (delR (k' , v') (RedNode a (k , v) b ablack bblack) RC-Red)
+    delete (k' , v') (BlackNode a (k , v) b) with (delB (k' , v') (BlackNode a (k , v) b) RC-Black)
+    ...| (t , proof) = blackenroot t
 
     
