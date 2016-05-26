@@ -291,8 +291,7 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = promote4 (balanceBLeft (RedNode Empty kvy c RC-Empty) kvz d)
     rotateRLeft Empty RCBBRBT-Empty kvy Empty RC-Empty = RedNode Empty kvy Empty RC-Empty RC-Empty
     rotateRLeft (BlackNode a kvx b) RCBBRBT-Black kvy (BlackNode c kvz d) (RC-Black) = RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black
-    {-this shouldn't work, because of different black-heights, why is agda allowing this?-}
-    rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz d) (RC-Black) = RedNode Empty kvy (BlackNode c kvz d) RC-Empty RC-Black
+    rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz (RedNode d kv d₁ () rr)) RC-Black 
     {-this can't work because we have a rednode where there needs to be a black one but agda says I need this case--so I did a void thing-}
     rotateRLeft (RedNode a kvx b cl rr) (Inl ()) kvy (BlackNode c kvz d) RC-Black
     rotateRLeft (RedNode a kvx b cl rr) (Inr ()) kvy (BlackNode c kvz d) RC-Black 
@@ -355,19 +354,25 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
       ...| (x' , (a' , color)) with (rotateRLeft a' color kvx b bblack)
       ...| t = x' , t
       mindelR (BlackNode a kvx b) ()
+
+      mindel-any : {n : Nat} → (s : RBT n) → ((Key × Value) × BBRBT n)
+      mindel-any Empty = {!!} , Empty
+      mindel-any (RedNode a kv b black bblack) = mindelR (RedNode a kv b black bblack) RC-Red
+      mindel-any (BlackNode a kv b) with mindelB (BlackNode a kv b) RC-Black
+      ...| (x' , (t , color)) = x' , t
       
       
 
     {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.
     problem: since blackheight is intrinsic, how do I do this???? it should be allowed to decrement by one.-}
-    blackenroot : {n : Nat} → BBRBT n → RBT n
-    blackenroot Empty = Empty
-    blackenroot DBEmpty = {!Empty!}
-    blackenroot (RedNode l kv r cl rr) = RedNode l kv r cl rr
-    blackenroot (BlackNode l kv r) = BlackNode l kv r
-    blackenroot (DBlackNode l kv r) = {!(BlackNode l kv r)!}
+    blackenroot : {n : Nat} → BBRBT n → Σ λ m → RBT m
+    blackenroot Empty = _ , Empty
+    blackenroot DBEmpty = 1 , Empty
+    blackenroot (RedNode l kv r cl rr) = _ , RedNode l kv r cl rr
+    blackenroot (BlackNode l kv r) = _ , BlackNode l kv r
+    blackenroot (DBlackNode l kv r) = {!!} , (BlackNode l kv r) {-agda won't let me do this!-}
 
-    {-del takes an RBT and an element to delete. 
+   {- del takes an RBT and an element to delete. 
     1. If the root color is B, then del returns a BBRBT with a black or double black root
     2. If the root color is R, then del returns a BBRBT-}
     {-do I need the rootcolored t black stuff?-}  {-confused--before agda always complained about not enough cases. 
@@ -389,39 +394,26 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
       ...| _ = (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty)
                   (ky , vy) Empty) , (Inl RC-Black) 
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black with compare k' ky
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = {!!}
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = rotateBLeft (del-any (k' , v') a) (ky , vy) b
         {-I want to case on the color of the subtrees!-}
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = {!!}
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Equal = {!!}
-
-    {-  delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (RedNode c (kz , vz) d cblack dblack)) RC-Black
-                                with compare k' ky
-      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Less  = {!!}
-      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Greater = {!!}
-      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (RedNode c (kz , vz) d cblack dblack)) RC-Black | Equal = {!!}
-      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (BlackNode c (kz , vz) d)) RC-Black = ?
-      delB (k' , v') (BlackNode (RedNode a (kx , vx) b ablack bblack)
-                                (ky , vy)
-                                (RedNode c (kz , vz) d cblack dblack)) RC-Black -}
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = rotateBRight a (ky , vy) (del-any (k' , v') b)
+      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Equal with mindel-any b
+      ...| (x' , t ) = rotateBRight a x' t                    
                                 
       delR : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Red) → BBRBT n
       delR = {!!}
 
-    {-Delete takes an RBT and an element to delete and returns an RBT. -}
-    delete : {n : Nat} → (Key × Value) → (t : RBT n) → RBT n
-    delete (k' , v') Empty = Empty
-    delete (k' , v') (RedNode a (k , v) b ablack bblack) = blackenroot (delR (k' , v') (RedNode a (k , v) b ablack bblack) RC-Red)
+      del-any : {n : Nat} → (Key × Value) → RBT n → BBRBT n
+      del-any (k' , v') Empty = Empty
+      del-any (k' , v') (RedNode a (kx , vx ) b ablack bblack) = delR (k' , v') (RedNode a (kx , vx) b ablack bblack) RC-Red
+      del-any (k' , v') (BlackNode a (kx , vx) b) with (delB (k' , v') (BlackNode a (kx , vx) b) RC-Black)
+      ...| (t , proof ) = t 
+
+    {-Delete takes an RBT and an element to delete and returns an RBT. 
+    delete : {n : Nat} → (Key × Value) → (t : RBT n) → Σ λ m → RBT n
+    delete (k' , v') Empty = _ , Empty
+    delete (k' , v') (RedNode a (k , v) b ablack bblack) = _ , blackenroot (delR (k' , v') (RedNode a (k , v) b ablack bblack) RC-Red)
     delete (k' , v') (BlackNode a (k , v) b) with (delB (k' , v') (BlackNode a (k , v) b) RC-Black)
-    ...| (t , proof) = blackenroot t
+    ...| (t , proof) = _ ,  blackenroot t -}
 
     
