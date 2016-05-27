@@ -11,10 +11,6 @@ module RBTspecsnew where
       Black : Color
       DoubleBlack : Color
 
-    data ColorHeight :  Nat → Nat → Set where
-        CH-Red : ∀ {n} → ColorHeight n n 
-        CH-Black : ∀ {n} → ColorHeight n (S n)
-        CH-DoubleBlack :  ∀ {n} → ColorHeight n (S (S n))
 
     mutual
      data RBT     : Nat → Set where
@@ -103,73 +99,28 @@ Essentially, a BBRBT is an RBT that may have a double black root.-}
                  → RootColoredBBRBT (BlackNode l kv r) Black
         RC-DoubleBlack :  {n : Nat } {l : RBT n } {kv : Key × Value} {r : RBT n}
                  → RootColoredBBRBT (DBlackNode l kv r) DoubleBlack
-
-{-A BBARBT is a tree with a red, black, or double black root, with a the right child a LeftARBT OR the left child a RightARBT.
-If the root is red, there cannot be any red-red violations and so the tree has to be a regular RBT. -}                      
-    data BBARBT : Nat -> Set where   
-             Empty         : BBARBT 1
-       {-a BBARBT Can have its left child a right ARBT-}
-             LBlackNode    : ∀ {n}
-                           → (l : RightARBT n )
-                           → (kv : Key × Value)
-                           → (r : RBT n) 
-                           → BBARBT (S n)
-       {-or its right child a left ARBT-}
-             RBlackNode    :  ∀ {n}
-                           → (l : RBT n) 
-                           → (kv : Key × Value)
-                           → (r : LeftARBT n )
-                           → BBARBT (S n) 
-             LDBlackNode   :   ∀ {n}
-                           → (l : RightARBT n)
-                           → (kv : Key × Value)
-                           → (r : RBT n) 
-                           → BBARBT (S (S n))
-       {-or its right child a left ARBT-}
-             RDBlackNode   :   ∀ {n}
-                           → (l : RBT n)
-                           → (kv : Key × Value)
-                           → (r : LeftARBT n)
-                           → BBARBT (S (S n))
-             RedNode       : ∀ {n}
-                           → (l : RBT n)
-                           → (kv : Key × Value)
-                           → (r : RBT n)
-                           → (cl : RootColored l Black)
-                           → (rr : RootColored r Black)
-                           → BBARBT n 
-                          
+                      
              
 {-An RBT fits the definition of every tree we've defined-}
  
-    promote2 : {n : Nat} → RBT n -> LeftARBT n
-    promote2 Empty =  Empty
-    promote2 (RedNode l kv r _ rr) = RedNode l kv r rr
-    promote2 (BlackNode l kv r)   = BlackNode l kv r
+    promote2LeftARBT : {n : Nat} → RBT n -> LeftARBT n
+    promote2LeftARBT Empty =  Empty
+    promote2LeftARBT (RedNode l kv r _ rr) = RedNode l kv r rr
+    promote2LeftARBT (BlackNode l kv r)   = BlackNode l kv r
 
-    promote3 : {n : Nat} → RBT n -> RightARBT n
-    promote3 Empty =  Empty
-    promote3 (RedNode l kv r cl _) = RedNode l kv r cl
-    promote3 (BlackNode l kv r)   = BlackNode l kv r
+    promote2RightARBT : {n : Nat} → RBT n -> RightARBT n
+    promote2RightARBT Empty =  Empty
+    promote2RightARBT (RedNode l kv r cl _) = RedNode l kv r cl
+    promote2RightARBT (BlackNode l kv r)   = BlackNode l kv r
 
-    promote4 : {n : Nat} → RBT n -> BBRBT n
-    promote4 Empty =  Empty
-    promote4 (RedNode l kv r cl rr) = RedNode l kv r cl rr
-    promote4 (BlackNode l kv r ) = BlackNode l kv r
-
-    promote5 : {n : Nat} → RBT n -> BBARBT n
-    promote5 Empty =  BBARBT.Empty 
-    promote5 (RedNode l kv r cl rr) = RedNode l kv r cl rr
-    promote5 (BlackNode l kv r ) = LBlackNode (promote3 l) kv r 
-{-problem: technically, both LBBARBTBlackNode and RRBBARBTBlackNode should equal a normal RBT blacknode. what should I do? Is this going to be a problem?-}
-
-{-confused here-- in meetings, I remembe saying that we included the RBT def in each of the other tree definitions so that the "normal" case of when the tree is actually an RBT is folded into the function. But here, I have to make a different one at least for the BB case because we're trying to prove something different if the input is an RBT. Is this a problem? 
-However, we don't have to prove anything different for balanceBNeither, so do I need that function?-}
+    promote2BBRBT : {n : Nat} → RBT n -> BBRBT n
+    promote2BBRBT Empty =  Empty
+    promote2BBRBT (RedNode l kv r cl rr) = RedNode l kv r cl rr
+    promote2BBRBT (BlackNode l kv r ) = BlackNode l kv r
 
     {-balance takes a tree with a black or double black root. If the root is double black, there are three input/output possiblities:
-    1. left child can be a RightARBT, with the right child an RBT. Then balance returns an RBT with a black root
-    2. right child can be a LeftARBT, with the left child an RBT. Then balance returns an RBT with a black root.
-    3. Both children are RBTs, then balance returns an BBRBT with a double black root-}
+    1. left child can be a RightARBT, with the right child an RBT. Then balance returns an BBRBT with a black or double black root.
+    2. right child can be a LeftARBT, with the left child an RBT. Then balance returns an BBRBT with a black or double black root. -}
 
     balanceBBLeft : {n : Nat} → RightARBT n → (Key × Value) → RBT n →
                        Σ \ (t : BBRBT (S(S n))) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
@@ -219,10 +170,10 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
 
 
     {-need helper function: if t is black, then promote4 t is black.-}
-    promote4color : {n : Nat} → (t1 : RBT n) → (RootColored t1 Black) → (RootColoredBBRBT (promote4 t1) Black)
-    promote4color Empty x = RC-Empty
-    promote4color (RedNode t1 kv t2 cl rr) ()
-    promote4color (BlackNode t1 kv t2) x = RC-Black
+    promotePreservesBlack : {n : Nat} → (t1 : RBT n) → (RootColored t1 Black) → (RootColoredBBRBT (promote2BBRBT t1) Black)
+    promotePreservesBlack Empty x = RC-Empty
+    promotePreservesBlack (RedNode t1 kv t2 cl rr) ()
+    promotePreservesBlack (BlackNode t1 kv t2) x = RC-Black
 
 
     {-Rotate can either take a tree with a red root or a black root. If the root is black, at most one of the left or right child
@@ -237,7 +188,7 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     ... | (t , proof ) =  t  , proof
     rotateBLeft (DBlackNode a kvw b) kvx (RedNode (BlackNode c kvy d) kvz e RC-Black eblack)
                               with balanceBLeft (RedNode (BlackNode a kvw b) kvx c RC-Black) kvy d
-    ... | t = promote4 (BlackNode t kvz e) , Inl (promote4color (BlackNode t kvz e) RC-Black)
+    ... | t = promote2BBRBT (BlackNode t kvz e) , Inl (promotePreservesBlack (BlackNode t kvz e) RC-Black)
     {-I defined the output to be a BBRBT and not a RBT that I sent through promote...so that I wouldn't have to write another helper.
     this is inconsistent. which way is better?-}
     rotateBLeft DBEmpty kvx (RedNode (BlackNode c kvy d) kvz e RC-Black eblack)
@@ -261,7 +212,7 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     ... | (t , proof ) =  t  , proof
     rotateBRight (RedNode a kvw (BlackNode b kvx c) ablack RC-Black) kvy (DBlackNode d kvz e) 
                               with balanceBRight b kvx (RedNode c kvy (BlackNode d kvz e) RC-Black)
-    ... | t = promote4 (BlackNode a kvw t) , Inl (promote4color (BlackNode a kvw t) RC-Black)
+    ... | t = promote2BBRBT (BlackNode a kvw t) , Inl (promotePreservesBlack (BlackNode a kvw t) RC-Black)
     {-I defined the output to be a BBRBT and not a RBT that I sent through promote...so that I wouldn't have to write another helper.
     this is inconsistent. which way is better?-}
     rotateBRight (RedNode a kvw (BlackNode b kvx c) ablack RC-Black) kvy DBEmpty 
@@ -287,8 +238,8 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   → BBRBT n
     {-the first two are the only really relevant cases-}
     rotateRLeft (DBlackNode a kvx b) RCBBRBT-DoubleBlack kvy (BlackNode c kvz d) RC-Black  =
-                                                         promote4 (balanceBLeft (RedNode (BlackNode a kvx b) kvy c RC-Black) kvz d)
-    rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = promote4 (balanceBLeft (RedNode Empty kvy c RC-Empty) kvz d)
+                                                         promote2BBRBT (balanceBLeft (RedNode (BlackNode a kvx b) kvy c RC-Black) kvz d)
+    rotateRLeft DBEmpty RCBBRBT-DBEmpty kvy (BlackNode c kvz d) RC-Black  = promote2BBRBT (balanceBLeft (RedNode Empty kvy c RC-Empty) kvz d)
     rotateRLeft Empty RCBBRBT-Empty kvy Empty RC-Empty = RedNode Empty kvy Empty RC-Empty RC-Empty
     rotateRLeft (BlackNode a kvx b) RCBBRBT-Black kvy (BlackNode c kvz d) (RC-Black) = RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black
     rotateRLeft Empty RCBBRBT-Empty kvy (BlackNode c kvz (RedNode d kv d₁ () rr)) RC-Black 
@@ -308,10 +259,10 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   → BBRBT n
     {-first two are the only relevant cases-}
     rotateRRight (BlackNode a kvx b) RC-Black kvy (DBlackNode c kvz d) RCBBRBT-DoubleBlack =
-                                                              promote4 (balanceBRight a kvx (RedNode b kvy (BlackNode c kvz d) RC-Black))
-    rotateRRight (BlackNode a kvx b) RC-Black kvy DBEmpty RCBBRBT-DBEmpty = promote4 (balanceBRight a kvx (RedNode b kvy Empty RC-Empty))
-    rotateRRight Empty RC-Empty kvy Empty RCBBRBT-Empty = promote4 (RedNode Empty kvy Empty RC-Empty RC-Empty)
-    rotateRRight (BlackNode a kvx b) RC-Black kvy (BlackNode c kvz d) RCBBRBT-Black = promote4 (RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black)
+                                                              promote2BBRBT (balanceBRight a kvx (RedNode b kvy (BlackNode c kvz d) RC-Black))
+    rotateRRight (BlackNode a kvx b) RC-Black kvy DBEmpty RCBBRBT-DBEmpty = promote2BBRBT (balanceBRight a kvx (RedNode b kvy Empty RC-Empty))
+    rotateRRight Empty RC-Empty kvy Empty RCBBRBT-Empty = promote2BBRBT (RedNode Empty kvy Empty RC-Empty RC-Empty)
+    rotateRRight (BlackNode a kvx b) RC-Black kvy (BlackNode c kvz d) RCBBRBT-Black = promote2BBRBT (RedNode (BlackNode a kvx b) kvy (BlackNode c kvz d) RC-Black RC-Black)
     {-These cases can't work because we're going to have a red-red violation, but Agda says I need them for completion-}
     rotateRRight (BlackNode a kvx b) RC-Black kvy (RedNode c kvz d cl rr) (Inl ())
     rotateRRight (BlackNode a kvx b) RC-Black kvy (RedNode c kvz d cl rr) (Inr ())
@@ -362,7 +313,6 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
       ...| (x' , (t , color)) = x' , t
       
       
-
     {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.
     problem: since blackheight is intrinsic, how do I do this???? it should be allowed to decrement by one.-}
     blackenroot : {n : Nat} → BBRBT n → Σ λ m → RBT m
@@ -370,7 +320,7 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
     blackenroot DBEmpty = 1 , Empty
     blackenroot (RedNode l kv r cl rr) = _ , RedNode l kv r cl rr
     blackenroot (BlackNode l kv r) = _ , BlackNode l kv r
-    blackenroot (DBlackNode l kv r) = {!!} , (BlackNode l kv r) {-agda won't let me do this!-}
+    blackenroot (DBlackNode l kv r) = _ , (BlackNode l kv r) {-agda won't let me specify a blackheight! is this a problem?????-}
 
    {- del takes an RBT and an element to delete. 
     1. If the root color is B, then del returns a BBRBT with a black or double black root
@@ -395,13 +345,23 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
                   (ky , vy) Empty) , (Inl RC-Black) 
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black with compare k' ky
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = rotateBLeft (del-any (k' , v') a) (ky , vy) b
-        {-I want to case on the color of the subtrees!-}
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = rotateBRight a (ky , vy) (del-any (k' , v') b)
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Equal with mindel-any b
-      ...| (x' , t ) = rotateBRight a x' t                    
+      ...| (x' , t ) = rotateBRight a x' t
+
+      {-is it okay that these functions return a function?-}
                                 
-      delR : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Red) → BBRBT n
-      delR = {!!}
+      delR : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Red) → BBRBT n 
+      delR (k' , v') (RedNode Empty (ky , vy) Empty RC-Empty RC-Empty) RC-Red with compare k' ky
+      ...| Equal = Empty
+      ...| _ = RedNode Empty (ky , vy) Empty RC-Empty RC-Empty
+      delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red with compare k' ky
+      delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Less with delB (k' , v') a ablack
+      ...| (t , proof)= rotateRLeft t proof (ky , vy) b bblack 
+      delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Greater with delB (k' , v') b bblack
+      ...| (t , proof) = rotateRRight a ablack (ky , vy) t proof
+      delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Equal with mindelB b bblack
+      ...| (kv , (t , proof)) = rotateRRight a ablack kv t proof
 
       del-any : {n : Nat} → (Key × Value) → RBT n → BBRBT n
       del-any (k' , v') Empty = Empty
@@ -409,11 +369,12 @@ However, we don't have to prove anything different for balanceBNeither, so do I 
       del-any (k' , v') (BlackNode a (kx , vx) b) with (delB (k' , v') (BlackNode a (kx , vx) b) RC-Black)
       ...| (t , proof ) = t 
 
-    {-Delete takes an RBT and an element to delete and returns an RBT. 
-    delete : {n : Nat} → (Key × Value) → (t : RBT n) → Σ λ m → RBT n
+    {-Delete takes an RBT and an element to delete and returns an RBT. -}
+    delete : {n : Nat} → (Key × Value) → (t : RBT n) → Σ λ m → RBT m
     delete (k' , v') Empty = _ , Empty
-    delete (k' , v') (RedNode a (k , v) b ablack bblack) = _ , blackenroot (delR (k' , v') (RedNode a (k , v) b ablack bblack) RC-Red)
+    delete (k' , v') (RedNode a (k , v) b ablack bblack) with blackenroot (delR (k' , v') (RedNode a (k , v) b ablack bblack) RC-Red)
+    ...| (m , t) = m , t
     delete (k' , v') (BlackNode a (k , v) b) with (delB (k' , v') (BlackNode a (k , v) b) RC-Black)
-    ...| (t , proof) = _ ,  blackenroot t -}
+    ...| (t , proof) = blackenroot t
 
     
