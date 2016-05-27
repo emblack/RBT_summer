@@ -107,7 +107,11 @@ module RBTspecsnew where
                    {cl : RootColored l Black} {cr : RootColored r Black}
                  → NonEmpty (RedNode l kv r cl cr) 
       NE-Black :  {n : Nat } {l : RBT n } {kv : Key × Value} {r : RBT n}
-                 → NonEmpty (BlackNode l kv r) 
+                 → NonEmpty (BlackNode l kv r)
+
+     {-no such think as an RBT with height 0-}
+    nozeroheight : RBT 0 → Void
+    nozeroheight (RedNode r kv r₁ () rr)
     
     
     {-An RBT fits the definition of every tree we've defined-}
@@ -291,41 +295,46 @@ module RBTspecsnew where
     If the root color of the input is R, it simply returns the element deleted and a BBRBT.
     change so that takes nonempty tree and doesnt return option-}
     mutual
-      mindelB : {n : Nat} → (s : RBT n) → (RootColored s Black) → {-put in nonempty take out maybe-}
-                       ((Maybe (Key × Value)) × Σ \ (t : BBRBT n) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack)))
-      mindelB Empty pf = None , Empty , (Inl RC-Empty)
-      mindelB (RedNode a kvx b cl rr) ()
-      mindelB (BlackNode Empty kvx Empty) pf = Some kvx , (DBEmpty , (Inr RC-DBEmpty))
-      mindelB (BlackNode Empty kvx (RedNode Empty kvy Empty RC-Empty RC-Empty)) pf = Some kvx , ((BlackNode Empty kvy Empty) , (Inl RC-Black))
-      mindelB (BlackNode (RedNode a kvw b ablack bblack) kvx c ) pf with (mindelR (RedNode a kvw b ablack bblack) RC-Red)
+      mindelB : {n : Nat} → (s : RBT n) → (RootColored s Black) → (NonEmpty s) →
+                       ((Key × Value) × Σ \ (t : BBRBT n) → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack)))
+      mindelB Empty pf ()
+      mindelB (RedNode a kvx b cl rr) () NE
+      mindelB (BlackNode Empty kvx Empty) pf NE = kvx , (DBEmpty , (Inr RC-DBEmpty))
+      mindelB (BlackNode Empty kvx (RedNode Empty kvy Empty RC-Empty RC-Empty)) pf NE = kvx , ((BlackNode Empty kvy Empty) , (Inl RC-Black))
+      mindelB (BlackNode (RedNode a kvw b ablack bblack) kvx c ) pf NE with (mindelR (RedNode a kvw b ablack bblack) RC-Red NE-Red)
       ... | x' , a' with (rotateBLeft a' kvx c)
       ... | (t , proof) = x' , t , proof
-      mindelB (BlackNode (BlackNode a1 kvw a2) kvx b) pf with (mindelB (BlackNode a1 kvw a2) RC-Black) 
+      mindelB (BlackNode (BlackNode a1 kvw a2) kvx b) pf NE with (mindelB (BlackNode a1 kvw a2) RC-Black NE-Black) 
       ... | (x' , (a' , color)) with (rotateBLeft a' kvx b)
       ... | (t , proof) = x' , (t , proof)
-      mindelB (BlackNode Empty kvx b) pf with (mindelB Empty RC-Empty) {-case on b to get rid of this-}
+      mindelB (BlackNode Empty kvx (RedNode Empty kv (RedNode b₁ kv₁ b₂ cl rr) cl₁ ())) pf NE
+      mindelB (BlackNode Empty kvx (RedNode Empty kv (BlackNode b₁ kv₁ b₂) cl rr)) pf NE = abort (nozeroheight b₂)
+      mindelB (BlackNode Empty kvx (RedNode (RedNode b kv b₁ cl rr) kv₁ b₂ () rr₁)) pf NE
+      mindelB (BlackNode Empty kvx (RedNode (BlackNode b kv b₁) kv₁ b₂ cl rr)) pf NE = abort (nozeroheight b)
+      mindelB (BlackNode Empty kvx (BlackNode b kv b₁)) pf NE = abort (nozeroheight b)
+
+  {-with (mindelB Empty RC-Empty) {-case on b to get rid of this-}
       ...| (x' , (a' , color)) with (rotateBLeft a' kvx b)
-      ...| (t , proof) = x' , (t , proof) 
+      ...| (t , proof) = x' , (t , proof) -}
 
-      mindelR : {n : Nat} → (s : RBT n) → RootColored s Red → ((Maybe (Key × Value)) × BBRBT n)
-      mindelR Empty pf = None , Empty
-      mindelR (RedNode Empty kvx Empty RC-Empty RC-Empty) pf  = Some kvx , Empty
-      mindelR (RedNode (BlackNode a1 kvw a2) kvx b ablack bblack) Pf with (mindelB (BlackNode a1 kvw a2) RC-Black)
+      mindelR : {n : Nat} → (s : RBT n) → (RootColored s Red) → (NonEmpty s) → ((Key × Value) × BBRBT n)
+      mindelR Empty pf ()
+      mindelR (RedNode Empty kvx Empty RC-Empty RC-Empty) pf NE  = kvx , Empty
+      mindelR (RedNode (BlackNode a1 kvw a2) kvx b ablack bblack) Pf NE with (mindelB (BlackNode a1 kvw a2) RC-Black NE-Black)
       ...| (x' , (a' , color)) with (rotateRLeft a' color kvx b bblack)
       ...| t = x' , t
-      mindelR (RedNode (RedNode a1 kvw a2 a1black a2black) kvx b () bblack) pf
-      mindelR (RedNode Empty kvx b RC-Empty bblack) pf with (mindelB Empty RC-Empty)
-      ...| (x' , (a' , color)) with (rotateRLeft a' color kvx b bblack)
-      ...| t = x' , t
-      mindelR (BlackNode a kvx b) ()
+      mindelR (RedNode (RedNode a1 kvw a2 a1black a2black) kvx b () bblack) pf NE
+      mindelR (RedNode Empty kvx (RedNode a kv b₁ cl rr) RC-Empty ()) pf NE
+      mindelR (RedNode Empty kvx (BlackNode b kv b₁) RC-Empty bblack) pf NE = abort (nozeroheight b) 
+      mindelR (BlackNode a kvx b) () NE
 
-      mindel-any : {n : Nat} → (s : RBT n) → ((Maybe (Key × Value)) × BBRBT n)
-      mindel-any Empty = None , Empty
-      mindel-any (RedNode a kv b black bblack) = mindelR (RedNode a kv b black bblack) RC-Red
-      mindel-any (BlackNode a kv b) with mindelB (BlackNode a kv b) RC-Black
+      mindel-any : {n : Nat} → (s : RBT n) → (NonEmpty s) → ((Key × Value) × BBRBT n)
+      mindel-any Empty ()
+      mindel-any (RedNode a kv b black bblack) NE = (mindelR (RedNode a kv b black bblack) RC-Red NE-Red)
+      mindel-any (BlackNode a kv b) NE with mindelB (BlackNode a kv b) RC-Black NE-Black
       ...| (x' , (t , color)) = x' , t
       
-      
+     
     {-blackenroot blackens the root of a tree. It takes a BBRBT and returns an RBT.
     problem: since blackheight is intrinsic, how do I do this???? it should be allowed to decrement by one.-}
     blackenroot : {n : Nat} → BBRBT n → Σ λ m → RBT m
@@ -344,58 +353,38 @@ module RBTspecsnew where
       delB : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Black) → Σ \ (t : BBRBT n)
                                           → (Either (RootColoredBBRBT t Black) (RootColoredBBRBT t DoubleBlack))
       delB (k' , v') Empty RC-Empty = Empty , (Inl RC-Empty)
-     {- delB (k' , v') (BlackNode Empty (k , v) Empty) RC-Black with compare k' k
-      ...| Less = (BlackNode Empty (k , v) Empty) , (Inl RC-Black)
-      ...| Greater = (BlackNode Empty (k , v) Empty) , (Inl RC-Black)
-      ...| Equal = DBEmpty , (Inr RC-DBEmpty)
-      delB (k' , v') (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty) (ky , vy) Empty) RC-Black  with compare k' ky
-      ...| Greater = (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty)
-                        (ky , vy) Empty) , (Inl RC-Black)
-      ...| Equal = (BlackNode Empty (ky , vy) Empty) , Inl RC-Black
-      ...| Less with compare k' kx
-      ...| Equal = (BlackNode Empty (ky , vy) Empty) , (Inl RC-Black)
-      ...| _ = (BlackNode (RedNode Empty (kx , vx) Empty RC-Empty RC-Empty)
-                  (ky , vy) Empty) , (Inl RC-Black)-}
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black  with compare k' ky
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = rotateBLeft (del-any (k' , v') a) (ky , vy) b
       delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = rotateBRight a (ky , vy) (del-any (k' , v') b)
       delB (k' , v') (BlackNode (RedNode Empty kv (RedNode a1 kv₁ a2 cl rr) cl1 ()) (ky , vy) Empty) RC-Black | Equal
-      delB (k' , v') (BlackNode (RedNode Empty kv (BlackNode a1 kv₁ a2) cl rr) (ky , vy) Empty) RC-Black | Equal = {!contra!}
+      delB (k' , v') (BlackNode (RedNode Empty kv (BlackNode a1 kv₁ a2) cl rr) (ky , vy) Empty) RC-Black | Equal = abort (nozeroheight a2)
       delB (k' , v') (BlackNode (RedNode (RedNode a kv a₁ cl rr) kv₁ a₂ () rr₁) (ky , vy) Empty) RC-Black | Equal 
-      delB (k' , v') (BlackNode (RedNode (BlackNode a kv a₁) kv₁ a₂ cl rr) (ky , vy) Empty) RC-Black | Equal = {!contra!}
-      delB (k' , v') (BlackNode (BlackNode a kv a₁) (ky , vy) Empty) RC-Black | Equal = {!contra!} 
-      delB (k' , v') (BlackNode a (ky , vy) (RedNode b kv b₁ cl rr)) RC-Black | Equal = {!mindelR!}
-      delB (k' , v') (BlackNode a (ky , vy) (BlackNode b kv b₁)) RC-Black | Equal = {!mindelB!}
+      delB (k' , v') (BlackNode (RedNode (BlackNode a kv a₁) kv₁ a₂ cl rr) (ky , vy) Empty) RC-Black | Equal = abort (nozeroheight a)
+      delB (k' , v') (BlackNode (BlackNode a kv a₁) (ky , vy) Empty) RC-Black | Equal = abort (nozeroheight a) 
+      delB (k' , v') (BlackNode a (ky , vy) (RedNode b kv b₁ cl rr)) RC-Black | Equal with mindelR (RedNode b kv b₁ cl rr) RC-Red NE-Red
+      ... | (min , t) = rotateBRight a min t
+      delB (k' , v') (BlackNode a (ky , vy) (BlackNode b kv b₁)) RC-Black | Equal with mindel-any (BlackNode b kv b₁) NE-Black
+      ...| (min , t) = rotateBRight a min t
       delB (k' , v') (BlackNode Empty (ky , vy) Empty) RC-Black | Equal = DBEmpty , Inr RC-DBEmpty
-      delB (k' , v') (BlackNode (RedNode Empty kv Empty cl rr) (ky , vy) Empty) RC-Black | Equal = {!!}
-      {- with compare k' ky
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Less = rotateBLeft (del-any (k' , v') a) (ky , vy) b
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Greater = rotateBRight a (ky , vy) (del-any (k' , v') b)
-      delB (k' , v') (BlackNode a (ky , vy) b) RC-Black | Equal with mindel-any b
-      ...| (Some x' , t ) = rotateBRight a x' t
-      delB (k' , v') (BlackNode a (ky , vy) Empty) RC-Black | Equal | None , t = {!!}
-      delB (k' , v') (BlackNode a (ky , vy) (RedNode b kv b₁ cl rr)) RC-Black | Equal | None , t = {!!}
-      delB (k' , v') (BlackNode a (ky , vy) (BlackNode b kv b₁)) RC-Black | Equal | None , t = {!!} {-this will never happen-- the case where b is empty is taken care of in the other cases. -}
-                             how to show? agda that this is the case?-}
-      {-have lemma that shows that -}
+      delB (k' , v') (BlackNode (RedNode Empty kv Empty cl rr) (ky , vy) Empty) RC-Black | Equal = BlackNode Empty kv Empty , Inl RC-Black
       {-is it okay that these functions return a function?-}
-                                
+                               
       delR : {n : Nat} → (Key × Value) → (t : RBT n) → (RootColored t Red) → BBRBT n 
-      delR (k' , v') (RedNode Empty (ky , vy) Empty RC-Empty RC-Empty) RC-Red with compare k' ky
-      ...| Equal = Empty
-      ...| _ = RedNode Empty (ky , vy) Empty RC-Empty RC-Empty
       delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red with compare k' ky
       delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Less with delB (k' , v') a ablack
       ...| (t , proof)= rotateRLeft t proof (ky , vy) b bblack 
       delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Greater with delB (k' , v') b bblack
       ...| (t , proof) = rotateRRight a ablack (ky , vy) t proof
-      delR (k' , v') (RedNode a (ky , vy) b ablack bblack) RC-Red | Equal with mindelB b bblack
-      ...| (Some kv , (t , proof)) = rotateRRight a ablack kv t proof
-      ...| (None , (t , proof)) = {!!} {-this will never happen--how to show?-} 
+      delR (k' , v') (RedNode Empty (ky , vy) Empty ablack bblack) RC-Red | Equal = Empty
+      delR (k' , v') (RedNode (RedNode a kv a₁ cl rr) (ky , vy) Empty () bblack) RC-Red | Equal
+      delR (k' , v') (RedNode (BlackNode a kv a₁) (ky , vy) Empty ablack bblack) RC-Red | Equal = abort (nozeroheight a)
+      delR (k' , v') (RedNode a (ky , vy) (RedNode b kv b₁ cl rr) ablack ()) RC-Red | Equal
+      delR (k' , v') (RedNode a (ky , vy) (BlackNode b kv b₁) ablack bblack) RC-Red | Equal with mindelB (BlackNode b kv b₁) RC-Black NE-Black
+      ...| (min , t , proof) = rotateRRight a ablack min t proof
 
       del-any : {n : Nat} → (Key × Value) → RBT n → BBRBT n
       del-any (k' , v') Empty = Empty
-      del-any (k' , v') (RedNode a (kx , vx ) b ablack bblack) = delR (k' , v') (RedNode a (kx , vx) b ablack bblack) RC-Red
+      del-any (k' , v') (RedNode a (kx , vx ) b ablack bblack) =  delR (k' , v') (RedNode a (kx , vx) b ablack bblack) RC-Red
       del-any (k' , v') (BlackNode a (kx , vx) b) with (delB (k' , v') (BlackNode a (kx , vx) b) RC-Black)
       ...| (t , proof ) = t 
 
@@ -406,5 +395,5 @@ module RBTspecsnew where
     ...| (m , t) = m , t
     delete (k' , v') (BlackNode a (k , v) b) with (delB (k' , v') (BlackNode a (k , v) b) RC-Black)
     ...| (t , proof) = blackenroot t
-
     
+
