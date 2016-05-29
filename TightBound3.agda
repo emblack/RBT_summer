@@ -2,14 +2,6 @@ open import Preliminaries
 
 module TightBound3 where
 
-  record Σi {A : Set} (B : A → Set) : Set where
-    constructor [_]
-    field
-      {first}  : A
-      get : B first
-
-  open Σi
-
   module RBT (Key : Set) (compare : Key -> Key -> Order) (Value : Set) where 
 
     -- ----------------------------------------------------------------------
@@ -267,3 +259,4 @@ module TightBound3 where
     ... | Equal = IR-RBT (Node t l (k1 , v1) r)
     ... | Greater = IR-NodeR t l (k2 , v2) (ins (k1 , v1) r)
   
+

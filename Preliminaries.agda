@@ -76,6 +76,15 @@ module Preliminaries where
 
   infixr 10 _×_
 
+  -- implicit first component
+  record Σi {A : Set} (B : A → Set) : Set where
+    constructor [_]
+    field
+      {first}  : A
+      get : B first
+  open Σi public
+
+
   -- ----------------------------------------------------------------------
   -- booleans
 
