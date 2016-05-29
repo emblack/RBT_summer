@@ -2,6 +2,14 @@ open import Preliminaries
 
 module TightBound3 where
 
+  record Σi {A : Set} (B : A → Set) : Set where
+    constructor [_]
+    field
+      {first}  : A
+      get : B first
+
+  open Σi
+
   module RBT (Key : Set) (compare : Key -> Key -> Order) (Value : Set) where 
 
     -- ----------------------------------------------------------------------
@@ -27,10 +35,6 @@ module TightBound3 where
     ↓ : RBColor → Color
     ↓ Black = Black
     ↓ Red = Red
-
-    _-1 : BlackColor → RBColor
-    Black -1 = Red
-    DoubleBlack -1 = Black
 
     _+1 : RBColor → BlackColor
     Black +1 = DoubleBlack
@@ -78,35 +82,39 @@ module TightBound3 where
     RightARBT-RedNode {cr = Black} l x r = nv (Node Red l x r)
     RightARBT-RedNode {cr = Red} l x r = RR l x r
 
+    LeftARBT-RedNode : ∀ {n cl} → (l : RBT' n cl) → (x : Key × Value) → (r : RBT' n Black) → LeftARBT n Red
+    LeftARBT-RedNode {cl = Black} l x r = nv (Node Red l x r)
+    LeftARBT-RedNode {cl = Red} l x r = RR l x r
+
     nozeroheight : ∀ {c} → RBT' 0 c → Void
     nozeroheight (Node Red t₁ x t₂) = nozeroheight t₁
     
     -- ----------------------------------------------------------------------
     -- balance 
 
-    data BalanceResult : Nat → BlackColor → Set where
-      B : ∀ {c n} → RBT' (S n) c → BalanceResult n Black
-      BB : ∀ {c n} → BBRBT (S (S n)) (↑ c) → BalanceResult n DoubleBlack
+    data BalanceType : BlackColor → Nat → Nat → Set where
+      Black       : ∀ {n} → BalanceType Black (S n) n
+      DoubleBlack : ∀ {n} → BalanceType DoubleBlack (S (S n)) n
 
-    bc-1type : (c : BlackColor) (n : Nat) → Σ \ m → NodeType (c -1) m n Black Black
-    bc-1type Black _ = _ , Red
-    bc-1type DoubleBlack _ = _ , Black
+    BalanceResult : BlackColor → Nat → Set 
+    BalanceResult Black m = Σi \ (c : RBColor) → RBT' m c
+    BalanceResult DoubleBlack m = Σi \ (c : BlackColor) → BBRBT m (↑ c)
 
-    BR-nv : ∀ {bc n} → RBT' (fst (bc-1type bc (S n))) (bc -1) → BalanceResult n bc
-    BR-nv {Black} t = B t
-    BR-nv {DoubleBlack} t = BB (nv t)
+    BR-Node-1 : ∀ {c m n} → BalanceType c m n → RBT' (S n) Black → Key × Value → RBT' (S n) Black → BalanceResult c m
+    BR-Node-1 Black l x r = [ Node Red l x r ]
+    BR-Node-1 DoubleBlack l x r = [ nv (Node Black l x r) ]
 
-    BR-Node : ∀ {n lc rc} → {c : BlackColor} → RBT' n lc → Key × Value → RBT' n rc → BalanceResult n c
-    BR-Node {c = Black} l x r = B (Node Black l x r)
-    BR-Node {c = DoubleBlack} l x r = BB (BB (Node Black l x r))
+    BR-Node : ∀ {c m n lc rc} → BalanceType c m n → RBT' n lc → Key × Value → RBT' n rc → BalanceResult c m
+    BR-Node Black l x r = [ Node Black l x r ]
+    BR-Node DoubleBlack l x r = [ BB (Node Black l x r) ]
 
-    balanceLeft : ∀ {n lc rc} {c : BlackColor} → RightARBT n lc → (Key × Value) → RBT' n rc → BalanceResult n c
-    balanceLeft (RR a x (Node Red b y c)) z d = BR-nv (Node (snd (bc-1type _ _)) (Node Black a x b) y (Node Black c z d)) 
-    balanceLeft (nv a) z d = BR-Node a z d
+    balanceLeft : ∀ {c n m lc rc} → BalanceType c m n → RightARBT n lc → (Key × Value) → RBT' n rc → BalanceResult c m
+    balanceLeft t (RR a x (Node Red b y c)) z d = BR-Node-1 t (Node Black a x b) y (Node Black c z d)
+    balanceLeft t (nv a) z d = BR-Node t a z d
 
-    balanceRight : ∀ {n lc rc} → {c : BlackColor} → RBT' n lc → (Key × Value) → LeftARBT n rc → BalanceResult n c
-    balanceRight a x (RR (Node Red b y c) z d) = BR-nv (Node (snd (bc-1type _ _)) (Node Black a x b) y (Node Black c z d)) 
-    balanceRight a z (nv d) = BR-Node a z d
+    balanceRight : ∀ {c m n lc rc} → BalanceType c m n → RBT' n lc → (Key × Value) → LeftARBT n rc → BalanceResult c m
+    balanceRight t a x (RR (Node Red b y c) z d) = BR-Node-1 t (Node Black a x b) y (Node Black c z d)
+    balanceRight t a z (nv d) = BR-Node t a z d
 
     -- ----------------------------------------------------------------------
     -- rotate
@@ -115,34 +123,43 @@ module TightBound3 where
       Red : ∀ {n} {c : BlackColor} → RotateType Red n n (↑ c) Black
       Black : ∀ {n} {cv : Color} {cnv : RBColor} → RotateType Black (S n) n cv cnv 
 
-    data CBBRBT : RBColor → Nat → Set where
-      R : ∀ {m} {c : Color} → BBRBT m c → CBBRBT Red m
-      B : ∀ {m} {c : BlackColor} → BBRBT m (↑ c) → CBBRBT Black m
+    CBBRBT : RBColor → Nat → Set 
+    CBBRBT Red m = Σi \ (c : Color) → BBRBT m c
+    CBBRBT Black m = Σi \ (c : BlackColor) → BBRBT m (↑ c)
 
-    forgetC : ∀ {c n} → CBBRBT c n → Σ \ c' → BBRBT n c'
-    forgetC (R t) = _ , t
-    forgetC (B t) = _ , t
+    forgetC : ∀ c {m} → CBBRBT c m → Σi \ c' → BBRBT m c'
+    forgetC Red  t = t
+    forgetC Black [ t ] = [ t ]
 
-    promote-br-rr :  ∀ {c m n lc rc} → RotateType c m (S n) lc rc → BalanceResult n (c +1) → CBBRBT c m
-    promote-br-rr Black (BB t) = B t
-    promote-br-rr Red (B t) = R (nv t)
+    _+1' : ∀ {c m n lc rc} → RotateType c m (S n) lc rc → BalanceType (c +1) m n
+    Red +1' = Black
+    Black +1' = DoubleBlack
+    
+    promote-BR-CBB :  ∀ c {m} → BalanceResult (c +1) m → CBBRBT c m
+    promote-BR-CBB Black [ t ] = [ t ]
+    promote-BR-CBB Red [ t ] = [ nv t ]
 
-    rotate-Node : ∀ {c m n lc lc' rc} (t : RotateType c m n lc rc) (eq : lc == (↓ lc'))
+    CBB-Node' : ∀ {c m n lc lc' rc} (t : RotateType c m n lc rc) (eq : lc == (↓ lc'))
                   (l : RBT' n lc') (x : Key × Value) (r : RBT' n rc)
                 → CBBRBT c m
-    rotate-Node Red eq l x r rewrite ↓↑black _ _ (! eq) = R (nv (Node Red l x r))
-    rotate-Node Black Refl l x r = B (nv (Node Black l x r))
+    CBB-Node' Red eq l x r rewrite ↓↑black _ _ (! eq) = [ nv (Node Red l x r) ]
+    CBB-Node' Black Refl l x r = [ nv (Node Black l x r) ]
+
+    CBB-Node : ∀ {c m n lc rc} (t : RotateType c m n (↓ lc) rc) 
+                  (l : RBT' n lc) (x : Key × Value) (r : RBT' n rc)
+                → CBBRBT c m
+    CBB-Node t = CBB-Node' t Refl
 
     rotateLeft : ∀ {c m n lc rc}
                → RotateType c m n lc rc → BBRBT n lc → (Key × Value) → RBT' n rc
                → CBBRBT c m 
     -- interesting case 1
-    rotateLeft {c = rootc} t (BB a) x (Node Black b y c) = promote-br-rr t (balanceLeft {c = rootc +1} (RightARBT-RedNode a x b) y c) 
+    rotateLeft {c = co} t (BB a) x (Node Black b y c) = promote-BR-CBB co (balanceLeft (t +1') (RightARBT-RedNode a x b) y c)
     -- interesting case 2
-    rotateLeft Black (BB a) x (Node Red (Node Black b y c) z d) with (balanceLeft {c = Black} (RightARBT-RedNode a x b) y c)
-    ...                                                           | B l' = B (nv (Node Black l' z d))
+    rotateLeft Black (BB a) x (Node Red (Node Black b y c) z d) with (balanceLeft Black (RightARBT-RedNode a x b) y c)
+    ...                                                            | [ l' ] = [ nv (Node Black l' z d) ]
     -- keep it the same
-    rotateLeft t (nv a) z d = rotate-Node t Refl a z d
+    rotateLeft t (nv a) z d = CBB-Node t a z d
     -- contradictions
     rotateLeft t (BB a) x Empty = abort (nozeroheight a)
     rotateLeft Black (BB a) x (Node Red Empty y c) = abort (nozeroheight a)
@@ -152,22 +169,25 @@ module TightBound3 where
                → CBBRBT c m 
     rotateRight = {!symmetric!}
 
-    CBBRBT-NodeL : ∀ {c m n lc rc} → NodeType c m n lc rc → CBBRBT lc n → (Key × Value) → RBT' n rc → CBBRBT c m
-    CBBRBT-NodeL Black l x r = rotateLeft Black (snd (forgetC l)) x r
-    CBBRBT-NodeL Red (B l) x r = rotateLeft Red l x r
+    CBB-NodeL : ∀ {c m n lc rc} → NodeType c m n lc rc → CBBRBT lc n → (Key × Value) → RBT' n rc → CBBRBT c m
+    CBB-NodeL {lc = lc} Black l x r = rotateLeft Black (get (forgetC lc l)) x r
+    CBB-NodeL Red [ l ] x r = rotateLeft Red l x r
 
-    CBBRBT-NodeR : ∀ {c m n lc rc} → NodeType c m n lc rc → RBT' n lc → (Key × Value) → CBBRBT rc n → CBBRBT c m
-    CBBRBT-NodeR = {!symmetric!}
+    CBB-NodeR : ∀ {c m n lc rc} → NodeType c m n lc rc → RBT' n lc → (Key × Value) → CBBRBT rc n → CBBRBT c m
+    CBB-NodeR = {!symmetric!}
 
-    CBBRBT-Leaf : ∀ {c n cl cr} → NodeType c n 1 cl cr → RBT' 1 cl → CBBRBT c n
-    CBBRBT-Leaf Black Empty = B (BB Empty)
-    CBBRBT-Leaf Black (Node Red Empty x Empty) = B (nv (Node Black Empty x Empty))
-    CBBRBT-Leaf Red Empty = R (nv Empty)
+    CBB-Leaf : ∀ {c n cl cr} → NodeType c n 1 cl cr → RBT' 1 cl → CBBRBT c n
+    CBB-Leaf Black Empty = [ BB Empty ]
+    CBB-Leaf Black (Node Red Empty x Empty) = [ nv (Node Black Empty x Empty) ]
+    CBB-Leaf Red Empty = [ nv Empty ]
     -- impossible
-    CBBRBT-Leaf Black (Node Black l x r) = abort (nozeroheight l)
-    CBBRBT-Leaf Black (Node Red (Node Black l x l₁) x₁ r) = abort (nozeroheight l)
-    CBBRBT-Leaf Black (Node Red Empty x (Node Black r x₁ r₁)) = abort (nozeroheight r)
-    CBBRBT-Leaf Red (Node Black l x r) = abort (nozeroheight l)
+    CBB-Leaf Black (Node Black l x r) = abort (nozeroheight l)
+    CBB-Leaf Black (Node Red (Node Black l x l₁) x₁ r) = abort (nozeroheight l)
+    CBB-Leaf Black (Node Red Empty x (Node Black r x₁ r₁)) = abort (nozeroheight r)
+    CBB-Leaf Red (Node Black l x r) = abort (nozeroheight l)
+
+    -- ----------------------------------------------------------------------
+    -- delete
 
     IsNode : ∀ {n c} → RBT' n c → Set
     IsNode (Node _ _ _ _) = Unit
@@ -175,18 +195,18 @@ module TightBound3 where
 
     mindel : ∀ {n c} → (t : RBT' n c) {isnode : IsNode t} → (Key × Value) × CBBRBT c n
     mindel Empty {isnode = ()}
-    mindel (Node t Empty x r) = x , CBBRBT-Leaf (swap t) r
+    mindel (Node t Empty x r) = x , CBB-Leaf (swap t) r
     mindel (Node t (Node t1 l1 x l2) y r) with mindel (Node t1 l1 x l2)
-    ...                                       | min , l' = min , CBBRBT-NodeL t l' y r
+    ...                                       | min , l' = min , CBB-NodeL t l' y r
 
     del : ∀ {n c} → Key → (t : RBT' n c) → CBBRBT c n
-    del k Empty = B (nv Empty)
+    del k Empty = [ nv Empty ]
     del k (Node {c = c} t l (k' , v') r) with compare k k'
-    ...                                     | Less    = CBBRBT-NodeL t (del k l) (k' , v') r 
-    ...                                     | Greater = CBBRBT-NodeR t l (k' , v') (del k r)
-    del k (Node t l (k' , v') Empty) | Equal = CBBRBT-Leaf t l
+    ...                                     | Less    = CBB-NodeL t (del k l) (k' , v') r 
+    ...                                     | Greater = CBB-NodeR t l (k' , v') (del k r)
+    del k (Node t l (k' , v') Empty) | Equal = CBB-Leaf t l
     del k (Node t l (k' , v') (Node tr r1 x r2)) | Equal with mindel (Node tr r1 x r2)
-    ...                                                     | a , r' = CBBRBT-NodeR t l a r'
+    ...                                                     | a , r' = CBB-NodeR t l a r'
 
     RBT = Σ(\ m → Σ \ c → RBT' m c)
 
@@ -196,4 +216,54 @@ module TightBound3 where
     blackenroot (nv t) = _ , _ , t
 
     delete : Key → RBT → RBT
-    delete k (_ , _ , t) = blackenroot (snd (forgetC (del k t)))
+    delete k (_ , c , t) = blackenroot (get (forgetC c (del k t)))
+
+    -- ----------------------------------------------------------------------
+    -- insert
+
+    ARBT : Nat → RBColor → Set 
+    ARBT m c = Either (LeftARBT m c) (RightARBT m c)
+
+    InsResult : RBColor → Nat → Set
+    InsResult Black m = Σi (\ c → RBT' m c)
+    InsResult Red m = Σi (λ c → ARBT m c)
+
+    promote : ∀ c {m} → InsResult c m → Σi (λ c → ARBT m c)
+    promote Black [ t ] = [ Inl (nv t) ] -- could be Inr
+    promote Red t = t
+
+    IR-RBT : ∀ {c m} → RBT' m c → InsResult c m
+    IR-RBT {Black} t = [ t ]
+    IR-RBT {Red} t = [ Inl (nv t) ]  -- could be Inr
+
+    balanceLeftLeft : ∀ {c n m lc rc} → BalanceType c m n → LeftARBT n lc → (Key × Value) → RBT' n rc → BalanceResult c m
+    balanceLeftLeft t (RR (Node Red a x b) y c) z d = BR-Node-1 t (Node Black a x b) y (Node Black c z d)
+    balanceLeftLeft t (nv a) z d = BR-Node t a z d
+
+    balanceLeftEither : ∀ {c n m lc rc} → BalanceType c m n → ARBT n lc → (Key × Value) → RBT' n rc → BalanceResult c m
+    balanceLeftEither t (Inl l) x r = balanceLeftLeft t l x r
+    balanceLeftEither t (Inr l) x r = balanceLeft t l x r
+
+    balanceRightRight : ∀ {c m n lc rc} → BalanceType c m n → RBT' n lc → (Key × Value) → RightARBT n rc → BalanceResult c m
+    balanceRightRight t a x (RR b y (Node Red c z d)) = BR-Node-1 t (Node Black a x b) y (Node Black c z d)
+    balanceRightRight t a z (nv d) = BR-Node t a z d
+
+    balanceRightEither : ∀ {c n m lc rc} → BalanceType c m n → RBT' n lc → (Key × Value) → ARBT n rc → BalanceResult c m
+    balanceRightEither t l x (Inl r) = balanceRight t l x r
+    balanceRightEither t l x (Inr r) = balanceRightRight t l x r
+
+    IR-NodeL : ∀ {c m n cl cr} → NodeType c m n cl cr → InsResult cl n → Key × Value → RBT' n cr → InsResult c m
+    IR-NodeL {cl = cl} Black l x r = balanceLeftEither Black (get (promote cl l)) x r
+    IR-NodeL Red [ l ] x r = [ Inl (LeftARBT-RedNode l x r) ]
+
+    IR-NodeR : ∀ {c m n cl cr} → NodeType c m n cl cr → RBT' n cl → Key × Value → InsResult cr n → InsResult c m
+    IR-NodeR {cr = cr} Black l x r = balanceRightEither Black l x (get (promote cr r))
+    IR-NodeR Red l x [ r ] = [ Inr (RightARBT-RedNode l x r) ]
+
+    ins : ∀ {m c} → Key × Value → RBT' m c → InsResult c m
+    ins x Empty = [ Node Red Empty x Empty ]
+    ins (k1 , v1) (Node {cl = cl} t l (k2 , v2) r) with compare k1 k2
+    ... | Less = IR-NodeL t (ins (k1 , v1) l) (k2 , v2) r
+    ... | Equal = IR-RBT (Node t l (k1 , v1) r)
+    ... | Greater = IR-NodeR t l (k2 , v2) (ins (k1 , v1) r)
+  
