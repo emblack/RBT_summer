@@ -267,7 +267,6 @@ module RBTspecsnew where
     {-agda says that I need the case of a black node and an empty for completeness but they can't work because a black node and an empty tree
     will never have the same black height, so this case won't work! I found a way for agda to see it's dumb but it's messy-}
     rotateRLeft (BlackNode (RedNode (RedNode a kvw b ablack bblack) kvx c () cblack) kvy d) k v .Empty RC-Empty
-    
 
     rotateRRight : {n : Nat} → (l : RBT n) → (RootColored l Black)
                   → (Key × Value)
@@ -302,7 +301,7 @@ module RBTspecsnew where
       mindelB (BlackNode Empty kvx Empty) pf NE = kvx , (DBEmpty , (Inr RC-DBEmpty))
       mindelB (BlackNode Empty kvx (RedNode Empty kvy Empty RC-Empty RC-Empty)) pf NE = kvx , ((BlackNode Empty kvy Empty) , (Inl RC-Black))
       mindelB (BlackNode (RedNode a kvw b ablack bblack) kvx c ) pf NE with (mindelR (RedNode a kvw b ablack bblack) RC-Red NE-Red)
-      ... | x' , a' with (rotateBLeft a' kvx c)
+      ... | x' , a' with rotateBLeft a' kvx c
       ... | (t , proof) = x' , t , proof
       mindelB (BlackNode (BlackNode a1 kvw a2) kvx b) pf NE with (mindelB (BlackNode a1 kvw a2) RC-Black NE-Black) 
       ... | (x' , (a' , color)) with (rotateBLeft a' kvx b)
@@ -321,7 +320,7 @@ module RBTspecsnew where
       mindelR Empty pf ()
       mindelR (RedNode Empty kvx Empty RC-Empty RC-Empty) pf NE  = kvx , Empty
       mindelR (RedNode (BlackNode a1 kvw a2) kvx b ablack bblack) Pf NE with (mindelB (BlackNode a1 kvw a2) RC-Black NE-Black)
-      ...| (x' , (a' , color)) with (rotateRLeft a' color kvx b bblack)
+      ...| (x' , (a' , color)) with rotateRLeft a' color kvx b bblack
       ...| t = x' , t
       mindelR (RedNode (RedNode a1 kvw a2 a1black a2black) kvx b () bblack) pf NE
       mindelR (RedNode Empty kvx (RedNode a kv b₁ cl rr) RC-Empty ()) pf NE
