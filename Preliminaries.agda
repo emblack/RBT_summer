@@ -308,3 +308,117 @@ module Preliminaries where
     toVec = Vector.fromList o toList
     
 
+  module FancyOrder where
+
+    data FancyOrder {A : Set} {_≤_ : A → A → Set} (a1 a2 : A) : Set where
+        Less    : a1 ≤ a2 -> (a1 == a2 -> Void) → FancyOrder a1 a2
+        Equal   : a1 == a2 -> FancyOrder a1 a2
+        Greater : a2 ≤ a1 → (a1 == a2 -> Void) -> FancyOrder a1 a2
+  
+    record DecidableOrder : Set1 where
+      field
+        A       : Set
+        _≤_     : A → A → Set
+        ≤-refl  : ∀ {a} → a ≤ a
+        ≤-trans : ∀ {a1 a2 a3} → a1 ≤ a2 -> a2 ≤ a3 -> a1 ≤ a3
+        ≤-saturated : ∀ {a1 a2} -> a1 ≤ a2 -> a2 ≤ a1 -> a1 == a2
+        compare : (a1 a2 : A) → FancyOrder {A}{_≤_} a1 a2
+  
+      ≤-refl' : ∀ {a1 a2} → a1 == a2 -> a1 ≤ a2
+      ≤-refl' Refl = ≤-refl
+  
+      min : A → A → A
+      min a1 a2 with compare a1 a2
+      ... | Less _ _ = a1
+      ... | Equal _ = a1
+      ... | Greater _ _ = a2
+  
+      min-≤-1 : {a1 a2 : A} → min a1 a2 ≤ a1
+      min-≤-1 {a1}{a2} with compare a1 a2 
+      ... | Less lt _ = ≤-refl
+      ... | Equal eq = ≤-refl
+      ... | Greater gt _ = gt
+  
+      min-≤-2 : {a1 a2 : A} → min a1 a2 ≤ a2
+      min-≤-2 {a1}{a2} with compare a1 a2 
+      ... | Less lt _ = lt
+      min-≤-2 | Equal Refl = ≤-refl
+      ... | Greater gt _ = ≤-refl
+  
+      min-sym : {a1 a2 : A} → min a1 a2 == min a2 a1
+      min-sym {a1}{a2} with compare a1 a2 | compare a2 a1
+      min-sym | Less lt12 _ | Less lt21 _ = ≤-saturated lt12 lt21
+      min-sym | Less lt12 _ | Equal Refl = Refl
+      min-sym | Less lt12 _ | Greater gt21 _ = Refl
+      min-sym | Equal eq12 | Less lt21 _ = eq12
+      min-sym | Equal eq12 | Equal eq21 = eq12
+      min-sym | Equal eq12 | Greater gt21 _ = Refl
+      min-sym | Greater gt12 _ | Less lt21 _ = Refl
+      min-sym | Greater gt12 _ | Equal eq21 = Refl
+      min-sym | Greater gt12 _ | Greater gt21 _ = ≤-saturated gt12 gt21
+  
+      min-≤ : {a1 a2 : A} → a1 ≤ a2 -> (min a1 a2) == a1
+      min-≤ {a1} {a2} lt1 with compare a1 a2
+      ... | Less lt _ = Refl
+      ... | Equal eq = Refl
+      ... | Greater gt _ = ≤-saturated gt lt1
+  
+      max : A → A → A
+      max a1 a2 with compare a1 a2
+      ... | Less _ _ = a2
+      ... | Equal _ = a2
+      ... | Greater _ _ = a1
+  
+      max-≥-1 : {a1 a2 : A} → a1 ≤ max a1 a2 
+      max-≥-1 {a1}{a2} with compare a1 a2
+      ... | Less lt _ = lt
+      max-≥-1 | Equal Refl = ≤-refl
+      ... | Greater gt _ = ≤-refl
+  
+      max-≥-2 : {a1 a2 : A} → a2 ≤ max a1 a2
+      max-≥-2 {a1}{a2} with compare a1 a2
+      ... | Less lt _ = ≤-refl
+      ... | Equal eq = ≤-refl
+      ... | Greater gt _ = gt
+
+      min-monotone : {a1 a1' a2 a2' : A} → a1 ≤ a1' -> a2 ≤ a2' -> min a1 a2 ≤ min a1' a2'
+      min-monotone {a1}{a1'}{a2}{a2'} lt1 lt2 with compare a1 a2 | compare a1' a2' 
+      min-monotone lt1 lt2 | Less x x₁ | Less x₂ x₃ = lt1
+      min-monotone lt1 lt2 | Less x x₁ | Equal x₂ = lt1
+      min-monotone lt1 lt2 | Less x x₁ | Greater x₂ x₃ = ≤-trans x lt2
+      min-monotone lt1 lt2 | Equal x | Less x₁ x₂ = lt1
+      min-monotone lt1 lt2 | Equal x | Equal x₁ = lt1
+      min-monotone lt1 lt2 | Equal Refl | Greater x₁ x₂ = lt2
+      min-monotone lt1 lt2 | Greater x x₁ | Less x₂ x₃ = ≤-trans x lt1
+      min-monotone lt1 lt2 | Greater x x₁ | Equal x₂ = ≤-trans x lt1
+      min-monotone lt1 lt2 | Greater x x₁ | Greater x₂ x₃ = lt2
+
+      max-sym : {a1 a2 : A} → max a1 a2 == max a2 a1
+      max-sym {a1}{a2} with compare a1 a2 | compare a2 a1
+      max-sym | Less lt12 _ | Less lt21 _ = ≤-saturated lt21 lt12
+      max-sym | Less lt12 _ | Equal eq21 = eq21
+      max-sym | Less lt12 _ | Greater gt21 _ = Refl
+      max-sym | Equal eq12 | Less lt21 _ = ! eq12
+      max-sym | Equal eq12 | Equal eq21 = eq21
+      max-sym | Equal eq12 | Greater gt21 _ = Refl
+      max-sym | Greater gt12 _ | Less lt21 _ = Refl
+      max-sym | Greater gt12 _ | Equal eq21 = Refl
+      max-sym | Greater gt12 _ | Greater gt21 _ = ≤-saturated gt21 gt12
+  
+      max-≤ : {a1 a2 : A} → a1 ≤ a2 -> (max a1 a2) == a2
+      max-≤ {a1} {a2} lt1 with compare a1 a2
+      ... | Less lt _ = Refl
+      ... | Equal eq = Refl
+      ... | Greater gt _ = ≤-saturated lt1 gt
+
+      max-monotone : {a1 a1' a2 a2' : A} → a1 ≤ a1' -> a2 ≤ a2' -> max a1 a2 ≤ max a1' a2'
+      max-monotone {a1}{a1'}{a2}{a2'} lt1 lt2 with compare a1 a2 | compare a1' a2' 
+      max-monotone lt1 lt2 | Less x x₁ | Less x₂ x₃ = lt2
+      max-monotone lt1 lt2 | Less x x₁ | Equal x₂ = lt2
+      max-monotone lt1 lt2 | Less x x₁ | Greater x₂ x₃ = ≤-trans lt2 x₂
+      max-monotone lt1 lt2 | Equal x | Less x₁ x₂ = lt2
+      max-monotone lt1 lt2 | Equal x | Equal x₁ = lt2
+      max-monotone lt1 lt2 | Equal Refl | Greater x₁ x₂ = lt1
+      max-monotone lt1 lt2 | Greater x x₁ | Less x₂ x₃ = ≤-trans lt1 x₂
+      max-monotone lt1 lt2 | Greater x x₁ | Equal Refl = lt1
+      max-monotone lt1 lt2 | Greater x x₁ | Greater x₂ x₃ = lt1

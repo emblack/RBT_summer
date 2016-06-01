@@ -156,17 +156,19 @@ module TightBound3 where
     rotateLeft t (BB a) x Empty = abort (nozeroheight a)
     rotateLeft Black (BB a) x (Node Red Empty y c) = abort (nozeroheight a)
 
-    rotateRight : ∀ {c m n lc rc}
-               → RotateType c m n rc lc → RBT' n lc → (Key × Value) → BBRBT n rc
-               → CBBRBT c m 
-    rotateRight = {!symmetric!}
+    postulate
+      rotateRight : ∀ {c m n lc rc}
+                  → RotateType c m n rc lc → RBT' n lc → (Key × Value) → BBRBT n rc
+                  → CBBRBT c m 
+      -- symmetric
 
     CBB-NodeL : ∀ {c m n lc rc} → NodeType c m n lc rc → CBBRBT lc n → (Key × Value) → RBT' n rc → CBBRBT c m
     CBB-NodeL {lc = lc} Black l x r = rotateLeft Black (get (forgetC lc l)) x r
     CBB-NodeL Red [ l ] x r = rotateLeft Red l x r
 
-    CBB-NodeR : ∀ {c m n lc rc} → NodeType c m n lc rc → RBT' n lc → (Key × Value) → CBBRBT rc n → CBBRBT c m
-    CBB-NodeR = {!symmetric!}
+    postulate
+      CBB-NodeR : ∀ {c m n lc rc} → NodeType c m n lc rc → RBT' n lc → (Key × Value) → CBBRBT rc n → CBBRBT c m
+      -- symmetric
 
     CBB-Leaf : ∀ {c n cl cr} → NodeType c n 1 cl cr → RBT' 1 cl → CBBRBT c n
     CBB-Leaf Black Empty = [ BB Empty ]
