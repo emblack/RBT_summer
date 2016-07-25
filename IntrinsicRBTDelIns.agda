@@ -1,6 +1,6 @@
 open import Preliminaries 
 
-module TightBound3 where
+module IntrinsicRBTDelIns where
 
   module RBT (Key : Set) (compare : Key -> Key -> Order) (Value : Set) where 
 

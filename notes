@@ -1,0 +1,3 @@
+IntrinsicRBTDelIns -- cleaned up version
+                      doesn't check sorting / multiset; some starts are
+                      in scraps/IntrinsicRBTDelIns-SortedX.agda
